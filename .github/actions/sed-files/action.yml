@@ -3,7 +3,7 @@ description: "Find and Replace content with SED"
 
 inputs:
   file-path:
-    description: "File Path, eg: ./devops/argocd/${{steps.select-environment.outputs.environment}}/*.yaml"
+    description: "File Path, eg: ./devops/argocd/dev/*.yaml"
     required: true
   find-pattern:
     description: "Find Pattern, eg: <RELEASE_TAG>"
