@@ -1,0 +1,38 @@
+name: "SSM Secret Fetch"
+description: "Fetch an secret from AWS Parameter Store"
+
+inputs:
+  aws-region:
+    description: “AWS Region”
+    required: true
+  secret-path:
+    description: "Secret Path"
+    required: true
+
+outputs:
+  ssm-secret:
+    description: "SSM Secret"
+    value: ${{steps.ssm-retrieve.outputs.ssm-secret}}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Retrieve SSM Secret
+      shell: bash
+      id: ssm-retrieve
+      env:
+        AWS_REGION: ${{ inputs.aws-region }}
+        SECRET_PATH: ${{ inputs.secret-path }}
+      run: |
+
+        # FETCH SSM SECRET
+        SSM_SECRET=$(aws ssm get-parameter --name $SECRET_PATH --query "Parameter.Value" --output text --with-decryption --region $AWS_REGION)
+
+        # RESOLVE MULTILINE ISSUE DESCRIBED HERE https://github.community/t/set-output-truncates-multiline-strings/16852/5
+        SSM_SECRET="${SSM_SECRET//'%'/'%25'}"
+        SSM_SECRET="${SSM_SECRET//$'\n'/'%0A'}"
+        SSM_SECRET="${SSM_SECRET//$'\r'/'%0D'}"
+
+        # MASKS AND EXPORT CREDENTIALS
+        echo "::set-output name=ssm-secret::$SSM_SECRET"
+        #echo "::set-output name=ssm-secret::$SECRET_PATH"

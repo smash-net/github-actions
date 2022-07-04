@@ -1,0 +1,14 @@
+name: "Install AWS CLI"
+description: "Install AWS CLI"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Instal AWS CLI
+      shell: bash
+      id: install-aws-cli
+      run: |
+
+        # INSTALL AWS CLI
+        sudo apt update && sudo apt install python3-pip -y
+        sudo pip install awscli --upgrade

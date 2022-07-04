@@ -1,0 +1,14 @@
+name: "Install Teleport CLI"
+description: "Install INFRALESS Deployment Tools"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install TELEPORT CLI
+      shell: bash
+      id: install_teleport_cli
+      run: |
+
+        # INSTALL TELEPORT CLI
+        wget https://get.gravitational.com/teleport_8.3.4_amd64.deb
+        sudo apt install -y ./teleport_8.3.4_amd64.deb

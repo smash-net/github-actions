@@ -1,0 +1,60 @@
+name: "Select Environment"
+description: "Fetch an secret from AWS Parameter Store"
+
+# inputs:
+#   commit-tag:
+#     description: "Commit Tag"
+#     required: true
+#   github-run-id:
+#     description: "GitHub Run Id"
+#     required: true
+#   github-run-number:
+#     description: "GitHub Run Number"
+#     required: true
+
+outputs:
+  environment:
+    description: "Environment Name"
+    value: ${{steps.select-environment.outputs.environment}}
+  release-tag:
+    description: "Release Tag"
+    value: ${{steps.select-environment.outputs.release-tag}}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Select Environment
+      shell: bash
+      id: select-environment
+      # env:
+      #   COMMIT_TAG: ${{ inputs.commit-tag }}
+      #   GITHUB_RUN_ID: ${{ inputs.github-run-id }}
+      #   GITHUB_RUN_NUMBER: ${{ inputs.github-run-number }}
+
+      run: |
+
+        # PREPARE TAG CHECKING TO DETERMINE WHETHER IS PROD, STAGING or DEV
+        export REGEX_PROD='^[0-9]+\.[0-9]+\.[0-9]+$'
+        export REGEX_STG='^[0-9]+\.[0-9]+\.[0-9]+-stg\w+$'
+        export REGEX_DEV='^[0-9]+\.[0-9]+\.[0-9]+-dev\w+$'
+
+        if [[ ${GITHUB_REF_NAME} =~ $REGEX_PROD ]]; then
+            echo "PROD TAGS"
+            ENVIRONMENT="prod"
+        elif [[ ${GITHUB_REF_NAME} =~ $REGEX_STG ]]; then
+            echo "STG TAGS"
+            ENVIRONMENT="staging"
+        elif [[ ${GITHUB_REF_NAME} =~ $REGEX_DEV ]]; then
+            echo "DEV TAGS"
+            ENVIRONMENT="dev"
+        else
+            echo ${GITHUB_REF_NAME}
+            echo "This is not a valid tag, exiting ..."
+            exit 1
+        fi
+
+        RELEASE_TAG="${GITHUB_REF_NAME}-${GITHUB_RUN_ID}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+
+        # OUTPUTS
+        echo "::set-output name=environment::$ENVIRONMENT"
+        echo "::set-output name=release-tag::$RELEASE_TAG"

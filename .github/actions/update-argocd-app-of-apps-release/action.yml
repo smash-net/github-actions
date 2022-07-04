@@ -1,0 +1,79 @@
+name: "Update ARGOCD Release"
+description: "Fetch an secret from AWS Parameter Store"
+
+inputs:
+  environment:
+    description: "The Environment to deploy to"
+    required: true
+  app-name:
+    description: "The app name to be setup"
+    required: true
+  teleport-url:
+    description: "Teleport URL"
+    required: true
+  teleport-key:
+    description: "Teleport URL"
+    required: true
+  argocd-username:
+    description: "ArgoCD Username"
+    required: true
+  argocd-password:
+    description: "ArgoCD Password"
+    required: true
+  release-tag:
+    description: "Release Image Tag"
+    required: true
+
+# outputs:
+#   ssm-secret:
+#     description: "SSM Secret"
+#     value: ${{steps.ssm-retrieve.outputs.ssm-secret}}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Update ArgoCD Release
+      shell: bash
+      id: update-argocd-release
+      env:
+        AWS_REGION: ${{ inputs.aws-region }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        RELEASE_TAG: ${{ inputs.release-tag }}
+        APP_NAME: ${{ inputs.app-name }}
+        TELEPORT_URL: ${{ inputs.teleport-url }}
+        TELEPORT_KEY: ${{ inputs.teleport-key }}
+        ARGOCD_USERNAME: ${{ inputs.argocd-username }}
+        ARGOCD_PASSWORD: ${{ inputs.argocd-password }}
+        ARGOCD_TIMEOUT_SECONDS: ${{ inputs.argocd-timeout-seconds }}
+        ARGOCD_EXTRA_PARAMS: ${{ inputs.argocd-extra-params }}
+        TELEPORT_BASTION: ${{ inputs.teleport-bastion }}
+
+      run: |
+
+        # UPDATE ARGOCD APPS DEFINITION WITH THE NEW RELEASE TAG
+        # for file in ./devops/argocd/$ENVIRONMENT/*.yaml
+        # do
+        #   echo "$file"
+        #   echo "PREVIOUS"
+        #   sed -i "s#<RELEASE_TAG>#$RELEASE_TAG#g" "$file" | grep -n imageVersion $file
+        #   echo "UPDATED" && grep -n imageVersion $file
+        # done
+
+        # EXPORT TELEPORT KEY VARIABLE TO A FILE
+        echo "$TELEPORT_KEY" > teleport-key.pem
+
+        # CREATES A TUNNEL TO TELEPORT AND KEEP SESSION ACTIVE WITH A LOOP
+        nohup tsh ssh -L 8444:argo-cd-argocd-server.argocd.svc.cluster.local:443 --proxy=$TELEPORT_URL -i teleport-key.pem root@$TELEPORT_BASTION "while sleep 1; do echo waiting; done" & sleep 10
+
+        # LOGIN TO ARGOCD
+        argocd login localhost:8444 --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --grpc-web $ARGOCD_EXTRA_PARAMS
+
+        # SET NEW RELEASE TAG
+        argocd app set $APP_NAME --revision $RELEASE_TAG && sleep 5
+
+        # WAIT FOR APP-OF-APPS TO REACH HEALHTY STATUS.
+        #argocd app wait $APP_NAME --timeout $ARGOCD_TIMEOUT_SECONDS | grep 'Name:\|Health Status:'
+        argocd app wait $APP_NAME --timeout $ARGOCD_TIMEOUT_SECONDS
+
+        # WAIT FOR EVERY SINGLE APP TO REACH HEALHTY STATUS.
+        argocd app wait `argocd app list | awk '!/NAME|app-of-apps/{print $1}' | tr '\n' ' '` --timeout $ARGOCD_TIMEOUT_SECONDS | grep 'Name:\|Health Status:'
