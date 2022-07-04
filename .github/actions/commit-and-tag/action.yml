@@ -1,0 +1,27 @@
+name: "Commit and Tag"
+description: "Commit and Tag"
+
+inputs:
+  release-tag:
+    description: "Release Tag, eg: 0.0.1"
+    required: true
+  commit-path:
+    description: "Commit Path, eg: devops/*"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Commit and Tag
+      shell: bash
+      id: commit-and-tag
+      env:
+        RELEASE_TAG: ${{ inputs.release-tag }}
+        COMMIT_PATH: ${{ inputs.commit-path }}
+      run: |
+        git config --global user.email "bot@deploy.com"
+        git config --global user.name "Bot"
+        git add $COMMIT_PATH
+        git commit -m "UPDATE RELEASE DETAILS"
+        git tag $RELEASE_TAG
+        git push origin $RELEASE_TAG

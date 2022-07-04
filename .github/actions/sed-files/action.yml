@@ -1,0 +1,33 @@
+name: "SED Files"
+description: "Find and Replace content with SED"
+
+inputs:
+  file-path:
+    description: "File Path, eg: ./devops/argocd/${{steps.select-environment.outputs.environment}}/*.yaml"
+    required: true
+  find-pattern:
+    description: "Find Pattern, eg: <RELEASE_TAG>"
+    required: true
+  replace-pattern:
+    description: "Replace Pattern, eg: 0.0.1"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: SED Files
+      shell: bash
+      id: sed-files
+      env:
+        FILE_PATH: ${{ inputs.file-path }}
+        FIND_PATTERN: ${{ inputs.find-pattern }}
+        REPLACE_PATTERN: ${{ inputs.replace-pattern }}
+      run: |
+
+        for file in $FILE_PATH
+        do
+          echo "$file"
+          echo "PREVIOUS"
+          sed -i "s#$FIND_PATTERN#$REPLACE_PATTERN#g" "$file" | grep -n imageVersion $file
+          echo "UPDATED" && grep -n imageVersion $file
+        done
