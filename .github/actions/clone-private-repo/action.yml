@@ -27,13 +27,10 @@ runs:
         CLONE_PATH: ${{ inputs.clone-path }}
         EXTRA_COMMANDS: ${{ inputs.extra-commands }}
       run: |
-        # RESOLVE MULTILINE ISSUE DESCRIBED HERE https://github.community/t/set-output-truncates-multiline-strings/16852/5
-        GITHUB_DEPLOY_KEY="${GITHUB_DEPLOY_KEY//'%'/'%25'}"
-        GITHUB_DEPLOY_KEY="${GITHUB_DEPLOY_KEY//$'\n'/'%0A'}"
-        GITHUB_DEPLOY_KEY="${GITHUB_DEPLOY_KEY//$'\r'/'%0D'}"
-
         # add deploy key to ssh agent
         eval `ssh-agent -s`
+
+        # USE INPUTS DIRECTLY TO AVOID ENV VAR TO MESS UP WITH KEY FORMAT
         ssh-add - <<< "${{ inputs.github-deploy-key }}"
 
         # git clone

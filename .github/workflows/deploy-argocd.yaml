@@ -1,0 +1,169 @@
+name: Deploy ArgoCD
+
+on:
+  workflow_call:
+    inputs:
+      app-name:
+        required: true
+        type: string
+      app-image-name:
+        required: true
+        type: string
+
+jobs:
+  deploy-argocd:
+    name: build and deploy to argocd
+    runs-on: ubuntu-latest
+    # needs: tests
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Select Environment
+        id: select-environment
+        uses: LUPARG/c-github-actions/.github/actions/select-environment@master
+
+      - name: Assume InfraDeployGitHub
+        uses: aws-actions/configure-aws-credentials@master
+        with:
+          aws-region: ap-southeast-2
+          role-to-assume: arn:aws:iam::498179384503:role/CIDeployGitHub
+          role-duration-seconds: 1800
+
+      - name: Install AWS CLI
+        id: install-aws-cli
+        uses: LUPARG/c-github-actions/.github/actions/install-aws-cli@master
+
+      - name: Install ARGOCD CLI
+        id: install-argocd-cli
+        uses: LUPARG/c-github-actions/.github/actions/install-argocd-cli@master
+
+      - name: Install TELEPORT CLI
+        id: install-teleport-cli
+        uses: LUPARG/c-github-actions/.github/actions/install-teleport-cli@master
+
+      - name: Fetch GitHub Deploy Key
+        id: ssm-secret-fetch-github-deploy-key
+        uses: LUPARG/c-github-actions/.github/actions/ssm-secret-fetch@master
+        with:
+          aws-region: "ap-southeast-2"
+          secret-path: "/common/github/c-k8s-helm-chart/deploy-key"
+
+      - name: Fetch ArgoCD Username
+        id: ssm-secret-fetch-argocd-username
+        uses: LUPARG/c-github-actions/.github/actions/ssm-secret-fetch@master
+        with:
+          aws-region: "ap-southeast-2"
+          secret-path: "/${{steps.select-environment.outputs.environment}}/github/argocd/argocd-username"
+
+      - name: Fetch ArgoCD Password
+        id: ssm-secret-fetch-argocd-password
+        uses: LUPARG/c-github-actions/.github/actions/ssm-secret-fetch@master
+        with:
+          aws-region: "ap-southeast-2"
+          secret-path: "/${{steps.select-environment.outputs.environment}}/github/argocd/argocd-password"
+
+      - name: Fetch Teleport Key
+        id: ssm-secret-fetch-teleport-key
+        uses: LUPARG/c-github-actions/.github/actions/ssm-secret-fetch@master
+        with:
+          aws-region: "ap-southeast-2"
+          secret-path: "/common/github/teleport/teleport-key"
+
+      - name: CLONE K8S HELM CHART
+        id: clone-k8s-helm-chart
+        uses: INFRALESS-IO/github-actions/.github/actions/clone-private-repo@0.0.5
+        with:
+          github-deploy-key: "${{steps.ssm-secret-fetch-github-deploy-key.outputs.ssm-secret}}"
+          repository: "git@github.com:LUPARG/c-k8s-helm-chart.git"
+          clone-path: "./devops/argocd/k8s-helm-chart"
+          extra-commands: "rm -r ./devops/argocd/k8s-helm-chart/.git"
+
+      # - name: CLONE K8S HELM CHART
+      #   run: |
+
+      #     # add deploy key to ssh agent
+      #     eval `ssh-agent -s`
+      #     ssh-add - <<< '${{steps.ssm-secret-fetch-github-deploy-key.outputs.ssm-secret}}'
+
+      #     # git clone
+      #     git clone git@github.com:LUPARG/c-k8s-helm-chart.git ./devops/argocd/k8s-helm-chart
+      #     rm -r ./devops/argocd/k8s-helm-chart/.git
+
+      - name: Write Release
+        run: |
+          echo ${{steps.select-environment.outputs.release-tag}} >> release.txt
+
+      - name: UPDATE ARGOCD APPS DEFINITION WITH THE NEW RELEASE TAG
+        id: update-argocd-apps-release-tag
+        uses: INFRALESS-IO/github-actions/.github/actions/sed-files@0.0.5
+        with:
+          file-path: "./devops/argocd/${{steps.select-environment.outputs.environment}}/*.yaml"
+          find-pattern: "<RELEASE_TAG>"
+          replace-pattern: "${{steps.select-environment.outputs.release-tag}}"
+
+      - name: COMMIT CHANGE AND PRODUCE RELEASE TAG
+        id: commit-and-tag
+        uses: INFRALESS-IO/github-actions/.github/actions/commit-and-tag@0.0.5
+        with:
+          release-tag: "${{steps.select-environment.outputs.release-tag}}"
+          commit-path: "devops/*"
+
+      # - name: UPDATE ARGOCD APPS DEFINITION WITH THE NEW RELEASE TAG
+      #   id: update-source
+      #   run: |
+
+      #     # UPDATE ARGOCD APPS DEFINITION WITH THE NEW RELEASE TAG
+      #     for file in ./devops/argocd/${{steps.select-environment.outputs.environment}}/*.yaml
+      #     do
+      #       echo "$file"
+      #       echo "PREVIOUS"
+      #       sed -i "s#<RELEASE_TAG>#${{steps.select-environment.outputs.release-tag}}#g" "$file" | grep -n imageVersion $file
+      #       echo "UPDATED" && grep -n imageVersion $file
+      #     done
+
+      #     git config --global user.email "you@example.com"
+      #     git config --global user.name "Your Name"
+      #     git add devops/*
+      #     git commit -m "UPDATE RELEASE DETAILS"
+      #     git tag ${{steps.select-environment.outputs.release-tag}}
+      #     git push origin ${{steps.select-environment.outputs.release-tag}}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and Push to ECR
+        env:
+          APP_IMAGE_NAME: 498179384503.dkr.ecr.ap-southeast-2.amazonaws.com/${{ inputs.app-image-name }}
+        run: |
+          export APP_IMAGE_FPM=${APP_IMAGE_NAME}:fpm-${{steps.select-environment.outputs.release-tag}}
+          export APP_IMAGE_NGINX=${APP_IMAGE_NAME}:nginx-${{steps.select-environment.outputs.release-tag}}
+          docker build -t $APP_IMAGE_FPM -f Dockerfile .
+          docker build -t $APP_IMAGE_NGINX -f Dockerfile-nginx .
+          docker push $APP_IMAGE_FPM
+          docker push $APP_IMAGE_NGINX
+
+      - name: Update ARGOCD Release
+        id: update-argocd-release
+        uses: LUPARG/c-github-actions/.github/actions/update-argocd-release@master
+        with:
+          environment: ${{steps.select-environment.outputs.environment}}
+          release-tag: ${{steps.select-environment.outputs.release-tag}}
+          app-name: "${{ inputs.app-name }}"
+          argocd-username: ${{steps.ssm-secret-fetch-argocd-username.outputs.ssm-secret}}
+          argocd-password: ${{steps.ssm-secret-fetch-argocd-password.outputs.ssm-secret}}
+          argocd-timeout-seconds: "360"
+          teleport-key: ${{steps.ssm-secret-fetch-teleport-key.outputs.ssm-secret}}
+          teleport-url: "secure.c211.continusys.app:443"
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{steps.select-environment.outputs.release-tag}}
+          release_name: Release ${{steps.select-environment.outputs.release-tag}}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          generate_release_notes: true
