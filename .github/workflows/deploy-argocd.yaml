@@ -24,6 +24,9 @@ on:
       clone-k8s-helm-chart-repository:
         required: true
         type: string
+      clone-k8s-helm-chart-repository-tag:
+        required: true
+        type: string
       argocd-extra-params:
         required: true
         type: string
@@ -93,6 +96,7 @@ jobs:
         with:
           github-deploy-key: "${{steps.ssm-secret-fetch-github-deploy-key.outputs.ssm-secret}}"
           repository: "${{ inputs.clone-k8s-helm-chart-repository }}"
+          repository-tag: "${{ inputs.clone-k8s-helm-chart-repository-tag }}"
           clone-path: "./devops/argocd/k8s-helm-chart"
           extra-commands: "rm -r ./devops/argocd/k8s-helm-chart/.git"
 

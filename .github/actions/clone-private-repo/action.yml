@@ -8,6 +8,9 @@ inputs:
   repository:
     description: "Repository, eg: git@github.com:LUPARG/c-k8s-helm-chart.git"
     required: true
+  repository-tag:
+    description: "Repository tag, eg: 1.0.121"
+    required: true
   clone-path:
     description: "Path"
     required: true
@@ -24,6 +27,7 @@ runs:
       env:
         GITHUB_DEPLOY_KEY: ${{ inputs.github-deploy-key }}
         REPOSITORY: ${{ inputs.repository }}
+        REPOSITORY_TAG: ${{ inputs.repository-tag }}
         CLONE_PATH: ${{ inputs.clone-path }}
         EXTRA_COMMANDS: ${{ inputs.extra-commands }}
       run: |
@@ -34,5 +38,6 @@ runs:
         ssh-add - <<< "${{ inputs.github-deploy-key }}"
 
         # git clone
-        git clone $REPOSITORY $CLONE_PATH
+        git clone --depth 1 --branch $REPOSITORY_TAG $REPOSITORY $CLONE_PATH
         $EXTRA_COMMANDS
+        git clone  <tag_name>
