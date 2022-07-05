@@ -18,10 +18,10 @@ on:
       find-pattern:
         required: true
         type: string
-      actions-version:
+      aws-region:
         required: true
         type: string
-      aws-region:
+      clone-k8s-helm-chart-repository:
         required: true
         type: string
 
@@ -89,7 +89,7 @@ jobs:
         uses: INFRALESS-IO/github-actions/.github/actions/clone-private-repo@0.0.9
         with:
           github-deploy-key: "${{steps.ssm-secret-fetch-github-deploy-key.outputs.ssm-secret}}"
-          repository: "git@github.com:INFRALESS-IO/c-k8s-helm-chart.git"
+          repository: "${{ inputs.clone-k8s-helm-chart-repository }}"
           clone-path: "./devops/argocd/k8s-helm-chart"
           extra-commands: "rm -r ./devops/argocd/k8s-helm-chart/.git"
 
