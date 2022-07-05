@@ -38,7 +38,7 @@ jobs:
         uses: INFRALESS-IO/github-actions/.github/actions/select-environment@0.0.9
 
       - name: Assume InfraDeployGitHub
-        uses: aws-actions/configure-aws-credentials@0.0.9
+        uses: aws-actions/configure-aws-credentials@master
         with:
           aws-region: ap-southeast-2
           role-to-assume: arn:aws:iam::498179384503:role/CIDeployGitHub
