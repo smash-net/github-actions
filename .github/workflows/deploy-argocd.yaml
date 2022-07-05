@@ -170,6 +170,7 @@ jobs:
           argocd-timeout-seconds: "360"
           teleport-key: ${{steps.ssm-secret-fetch-teleport-key.outputs.ssm-secret}}
           teleport-url: "${{ inputs.teleport-url }}"
+          teleport-bastion: bastion-${{steps.select-environment.outputs.environment}}
 
       - name: Create Release
         id: create_release
