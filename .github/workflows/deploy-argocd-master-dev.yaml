@@ -104,8 +104,19 @@ jobs:
       - name: CLONE K8S HELM CHART
         id: clone-k8s-helm-chart
         uses: INFRALESS-IO/github-actions/.github/actions/clone-private-repo@0.0.21
+        if: ${{steps.ssm-secret-fetch-github-deploy-key.outputs.ssm-secret}} == 'true'
         with:
           github-deploy-key: "${{steps.ssm-secret-fetch-github-deploy-key.outputs.ssm-secret}}"
+          repository: "${{ inputs.clone-k8s-helm-chart-repository }}"
+          repository-tag: "${{ inputs.clone-k8s-helm-chart-repository-tag }}"
+          clone-path: "./devops/argocd/k8s-helm-chart"
+          extra-commands: "rm -r ./devops/argocd/k8s-helm-chart/.git"
+
+      - name: CLONE K8S HELM CHART
+        id: clone-k8s-helm-chart
+        uses: INFRALESS-IO/github-actions/.github/actions/clone-private-repo@0.0.21
+        if: ${{steps.ssm-secret-fetch-github-deploy-key.outputs.ssm-secret}} != 'true'
+        with:
           repository: "${{ inputs.clone-k8s-helm-chart-repository }}"
           repository-tag: "${{ inputs.clone-k8s-helm-chart-repository-tag }}"
           clone-path: "./devops/argocd/k8s-helm-chart"
