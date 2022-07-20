@@ -102,7 +102,7 @@ jobs:
           secret-path: "/common/github/teleport/teleport-key"
 
       - name: CLONE K8S HELM CHART
-        id: clone-k8s-helm-chart
+        id: clone-k8s-helm-chart-dk
         uses: INFRALESS-IO/github-actions/.github/actions/clone-private-repo@0.0.21
         if: ${{steps.ssm-secret-fetch-github-deploy-key.outputs.ssm-secret}} == 'true'
         with:
