@@ -1,0 +1,23 @@
+name: Build
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "*"
+permissions: write-all
+jobs:
+  deploy-argocd:
+    #needs: tests
+    uses: INFRALESS-IO/github-actions/.github/workflows/deploy-argocd-master-dev/deploy-argocd-master-dev.yaml@0.0.18
+    with:
+      app-name: "c-bcm-test"
+      app-image-name: "c-bcm-api"
+      ecr-url: "xxxxx.aws.com"
+      test-branch: "feature/infraless"
+      teleport-url: "secure.c211.domain.app:443"
+      argocd-extra-params: "--grpc-web --plaintext"
+      commit-path: "devops/*"
+      find-pattern: "<RELEASE_TAG>"
+      aws-region: "ap-southeast-2"
+      clone-k8s-helm-chart-repository: "git@github.com:INFRALESS-IO/k8s-helm-chart.git"
+      clone-k8s-helm-chart-repository-tag: "0.0.8"

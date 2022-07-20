@@ -1,0 +1,46 @@
+name: "Select Environment"
+description: "Determine the environment based on Branch"
+
+inputs:
+  test-branch:
+    description: "Test Branch if different than standard branches"
+    required: false
+
+outputs:
+  environment:
+    description: "Environment Name"
+    value: ${{steps.select-environment.outputs.environment}}
+  release-tag:
+    description: "Release Tag"
+    value: ${{steps.select-environment.outputs.release-tag}}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Select Environment
+      shell: bash
+      id: select-environment
+      run: |
+
+        # PREPARE TAG CHECKING TO DETERMINE WHETHER IS PROD, STAGING or DEV
+        if [[ ${GITHUB_REF_NAME} =~ master ]]; then
+              echo "PROD TAGS"
+              ENVIRONMENT="prod"
+        elif [[ ${GITHUB_REF_NAME} =~ staging ]]; then
+            echo "STG TAGS"
+            ENVIRONMENT="staging"
+        elif [[ ${GITHUB_REF_NAME} =~ dev ]]; then
+            echo "DEV TAGS"
+            ENVIRONMENT="dev"
+        elif [[ ${GITHUB_REF_NAME} =~ ${{ inputs.test-branch }} ]]; then
+            echo "DEV TAGS"
+            ENVIRONMENT="dev"
+        else
+            echo ${GITHUB_REF_NAME}
+            echo "This is not a valid branch for deployments, exiting ..."
+            exit 1
+        fi
+
+        RELEASE_TAG="${GITHUB_REF_NAME#*/}-${GITHUB_RUN_ID}-${GITHUB_RUN_NUMBER}"
+        echo "::set-output name=release-tag::$RELEASE_TAG"
+        echo "::set-output name=environment::$ENVIRONMENT"

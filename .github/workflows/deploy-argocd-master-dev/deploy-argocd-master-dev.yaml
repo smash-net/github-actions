@@ -1,0 +1,198 @@
+name: Deploy ArgoCD
+
+on:
+  workflow_call:
+    inputs:
+      app-name:
+        required: true
+        type: string
+      app-image-name:
+        required: true
+        type: string
+      teleport-url:
+        required: true
+        type: string
+      commit-path:
+        required: true
+        type: string
+      find-pattern:
+        required: true
+        type: string
+      aws-region:
+        required: true
+        type: string
+      clone-k8s-helm-chart-repository:
+        required: true
+        type: string
+      clone-k8s-helm-chart-repository-tag:
+        required: true
+        type: string
+      argocd-extra-params:
+        required: true
+        type: string
+      ecr-url:
+        required: true
+        type: string
+      test-branch:
+        required: false
+        type: string
+
+jobs:
+  deploy-argocd:
+    name: build and deploy to argocd master / dev model
+    runs-on: ubuntu-latest
+    # needs: tests
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Select Environment
+        id: select-environment
+        uses: INFRALESS-IO/github-actions/.github/actions/select-environment-master-dev@0.0.18
+        with:
+          test-branch: "${{ inputs.test-branch }}"
+
+      - name: Assume InfraDeployGitHub
+        uses: aws-actions/configure-aws-credentials@master
+        with:
+          aws-region: "${{ inputs.aws-region }}"
+          role-to-assume: arn:aws:iam::498179384503:role/CIDeployGitHub
+          role-duration-seconds: 1800
+
+      - name: Install AWS CLI
+        id: install-aws-cli
+        uses: INFRALESS-IO/github-actions/.github/actions/install-aws-cli@0.0.18
+
+      - name: Install ARGOCD CLI
+        id: install-argocd-cli
+        uses: INFRALESS-IO/github-actions/.github/actions/install-argocd-cli@0.0.18
+
+      - name: Install TELEPORT CLI
+        id: install-teleport-cli
+        uses: INFRALESS-IO/github-actions/.github/actions/install-teleport-cli@0.0.18
+
+      - name: Fetch GitHub Deploy Key
+        id: ssm-secret-fetch-github-deploy-key
+        uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.18
+        with:
+          aws-region: "${{ inputs.aws-region }}"
+          secret-path: "/common/github/c-k8s-helm-chart/deploy-key"
+
+      - name: Fetch ArgoCD Username
+        id: ssm-secret-fetch-argocd-username
+        uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.18
+        with:
+          aws-region: "${{ inputs.aws-region }}"
+          secret-path: "/${{steps.select-environment.outputs.environment}}/github/argocd/argocd-username"
+
+      - name: Fetch ArgoCD Password
+        id: ssm-secret-fetch-argocd-password
+        uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.18
+        with:
+          aws-region: "${{ inputs.aws-region }}"
+          secret-path: "/${{steps.select-environment.outputs.environment}}/github/argocd/argocd-password"
+
+      - name: Fetch Teleport Key
+        id: ssm-secret-fetch-teleport-key
+        uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.18
+        with:
+          aws-region: "${{ inputs.aws-region }}"
+          secret-path: "/common/github/teleport/teleport-key"
+
+      - name: CLONE K8S HELM CHART
+        id: clone-k8s-helm-chart
+        uses: INFRALESS-IO/github-actions/.github/actions/clone-private-repo@0.0.18
+        with:
+          github-deploy-key: "${{steps.ssm-secret-fetch-github-deploy-key.outputs.ssm-secret}}"
+          repository: "${{ inputs.clone-k8s-helm-chart-repository }}"
+          repository-tag: "${{ inputs.clone-k8s-helm-chart-repository-tag }}"
+          clone-path: "./devops/argocd/k8s-helm-chart"
+          extra-commands: "rm -r ./devops/argocd/k8s-helm-chart/.git"
+
+      # - name: CLONE K8S HELM CHART
+      #   run: |
+
+      #     # add deploy key to ssh agent
+      #     eval `ssh-agent -s`
+      #     ssh-add - <<< '${{steps.ssm-secret-fetch-github-deploy-key.outputs.ssm-secret}}'
+
+      #     # git clone
+      #     git clone git@github.com:INFRALESS-IO/c-k8s-helm-chart.git ./devops/argocd/k8s-helm-chart
+      #     rm -r ./devops/argocd/k8s-helm-chart/.git
+
+      - name: Write Release
+        run: |
+          echo ${{steps.select-environment.outputs.release-tag}} >> release.txt
+
+      - name: UPDATE ARGOCD APPS DEFINITION WITH THE NEW RELEASE TAG
+        id: update-argocd-apps-release-tag
+        uses: INFRALESS-IO/github-actions/.github/actions/sed-files@0.0.18
+        with:
+          file-path: "./devops/argocd/${{steps.select-environment.outputs.environment}}/*.yaml"
+          find-pattern: "${{ inputs.find-pattern }}"
+          replace-pattern: "${{steps.select-environment.outputs.release-tag}}"
+
+      - name: COMMIT CHANGE AND PRODUCE RELEASE TAG
+        id: commit-and-tag
+        uses: INFRALESS-IO/github-actions/.github/actions/commit-and-tag@0.0.18
+        with:
+          release-tag: "${{ steps.select-environment.outputs.release-tag }}"
+          commit-path: "${{ inputs.commit-path }}"
+
+      # - name: UPDATE ARGOCD APPS DEFINITION WITH THE NEW RELEASE TAG
+      #   id: update-source
+      #   run: |
+
+      #     # UPDATE ARGOCD APPS DEFINITION WITH THE NEW RELEASE TAG
+      #     for file in ./devops/argocd/${{steps.select-environment.outputs.environment}}/*.yaml
+      #     do
+      #       echo "$file"
+      #       echo "PREVIOUS"
+      #       sed -i "s#<RELEASE_TAG>#${{steps.select-environment.outputs.release-tag}}#g" "$file" | grep -n imageVersion $file
+      #       echo "UPDATED" && grep -n imageVersion $file
+      #     done
+
+      #     git config --global user.email "you@example.com"
+      #     git config --global user.name "Your Name"
+      #     git add devops/*
+      #     git commit -m "UPDATE RELEASE DETAILS"
+      #     git tag ${{steps.select-environment.outputs.release-tag}}
+      #     git push origin ${{steps.select-environment.outputs.release-tag}}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and Push to ECR
+        env:
+          APP_IMAGE_NAME: ${{ inputs.ecr-url }}/${{ inputs.app-image-name }}
+        run: |
+          export APP_IMAGE=${{ inputs.app-name }}:${{steps.select-environment.outputs.release-tag}}
+          docker build -t $APP_IMAGE -f Dockerfile .
+          docker push $APP_IMAGE
+
+      - name: Update ARGOCD Release
+        id: update-argocd-release
+        uses: INFRALESS-IO/github-actions/.github/actions/update-argocd-release@0.0.18
+        with:
+          environment: ${{steps.select-environment.outputs.environment}}
+          release-tag: ${{steps.select-environment.outputs.release-tag}}
+          app-name: "${{ inputs.app-name }}"
+          argocd-username: ${{steps.ssm-secret-fetch-argocd-username.outputs.ssm-secret}}
+          argocd-password: ${{steps.ssm-secret-fetch-argocd-password.outputs.ssm-secret}}
+          argocd-timeout-seconds: "360"
+          argocd-extra-params: "${{ inputs.argocd-extra-params }}"
+          teleport-key: ${{steps.ssm-secret-fetch-teleport-key.outputs.ssm-secret}}
+          teleport-url: "${{ inputs.teleport-url }}"
+          teleport-bastion: bastion-${{steps.select-environment.outputs.environment}}
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{steps.select-environment.outputs.release-tag}}
+          release_name: Release ${{steps.select-environment.outputs.release-tag}}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          generate_release_notes: true
