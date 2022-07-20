@@ -4,7 +4,7 @@ description: "Clone Private Repo"
 inputs:
   github-deploy-key:
     description: "GitHub Deploy Key"
-    required: true
+    required: false
   repository:
     description: "Repository, eg: git@github.com:LUPARG/c-k8s-helm-chart.git"
     required: true
