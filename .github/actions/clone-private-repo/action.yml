@@ -35,8 +35,9 @@ runs:
         eval `ssh-agent -s`
 
         # USE INPUTS DIRECTLY TO AVOID ENV VAR TO MESS UP WITH KEY FORMAT
-        ssh-add - <<< "${{ inputs.github-deploy-key }}"
-
+        if [ -z "${{ inputs.github-deploy-key }}" ]; then
+          ssh-add - <<< "${{ inputs.github-deploy-key }}"
+        fi
         # git clone
         git clone --depth 1 --branch $REPOSITORY_TAG $REPOSITORY $CLONE_PATH
 
