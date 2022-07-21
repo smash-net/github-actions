@@ -73,12 +73,13 @@ jobs:
         id: install-teleport-cli
         uses: INFRALESS-IO/github-actions/.github/actions/install-teleport-cli@0.0.21
 
-      # - name: Fetch GitHub Deploy Key
-      #   id: ssm-secret-fetch-github-deploy-key
-      #   uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.21
-      #   with:
-      #     aws-region: "${{ inputs.aws-region }}"
-      #     secret-path: "/common/github/c-k8s-helm-chart/deploy-key"
+      - name: Fetch GitHub Deploy Key
+        id: ssm-secret-fetch-github-deploy-key
+        uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.21
+        continue-on-error: true
+        with:
+          aws-region: "${{ inputs.aws-region }}"
+          secret-path: "/common/github/c-k8s-helm-chart/deploy-key"
 
       - name: Fetch ArgoCD Username
         id: ssm-secret-fetch-argocd-username
@@ -104,7 +105,7 @@ jobs:
       - name: CLONE K8S HELM CHART
         id: clone-k8s-helm-chart-dk
         uses: INFRALESS-IO/github-actions/.github/actions/clone-private-repo@0.0.21
-        if: ${{steps.ssm-secret-fetch-github-deploy-key.outputs.ssm-secret}} == 'true'
+        if: steps.ssm-secret-fetch-github-deploy-key.outcome == 'success'
         with:
           github-deploy-key: "${{steps.ssm-secret-fetch-github-deploy-key.outputs.ssm-secret}}"
           repository: "${{ inputs.clone-k8s-helm-chart-repository }}"
@@ -115,7 +116,7 @@ jobs:
       - name: CLONE K8S HELM CHART
         id: clone-k8s-helm-chart
         uses: INFRALESS-IO/github-actions/.github/actions/clone-private-repo@0.0.21
-        if: ${{steps.ssm-secret-fetch-github-deploy-key.outputs.ssm-secret}} != 'true'
+        if: steps.ssm-secret-fetch-github-deploy-key.outcome != 'success'
         with:
           repository: "${{ inputs.clone-k8s-helm-chart-repository }}"
           repository-tag: "${{ inputs.clone-k8s-helm-chart-repository-tag }}"
