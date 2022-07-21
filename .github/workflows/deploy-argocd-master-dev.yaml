@@ -50,7 +50,7 @@ jobs:
 
       - name: Select Environment
         id: select-environment
-        uses: INFRALESS-IO/github-actions/.github/actions/select-environment-master-dev@0.0.26
+        uses: INFRALESS-IO/github-actions/.github/actions/select-environment-master-dev@0.0.27
         with:
           test-branch: "${{ inputs.test-branch }}"
 
@@ -63,19 +63,19 @@ jobs:
 
       - name: Install AWS CLI
         id: install-aws-cli
-        uses: INFRALESS-IO/github-actions/.github/actions/install-aws-cli@0.0.26
+        uses: INFRALESS-IO/github-actions/.github/actions/install-aws-cli@0.0.27
 
       - name: Install ARGOCD CLI
         id: install-argocd-cli
-        uses: INFRALESS-IO/github-actions/.github/actions/install-argocd-cli@0.0.26
+        uses: INFRALESS-IO/github-actions/.github/actions/install-argocd-cli@0.0.27
 
       - name: Install TELEPORT CLI
         id: install-teleport-cli
-        uses: INFRALESS-IO/github-actions/.github/actions/install-teleport-cli@0.0.26
+        uses: INFRALESS-IO/github-actions/.github/actions/install-teleport-cli@0.0.27
 
       - name: Fetch GitHub Deploy Key
         id: ssm-secret-fetch-github-deploy-key
-        uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.26
+        uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.27
         continue-on-error: true
         with:
           aws-region: "${{ inputs.aws-region }}"
@@ -83,28 +83,28 @@ jobs:
 
       - name: Fetch ArgoCD Username
         id: ssm-secret-fetch-argocd-username
-        uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.26
+        uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.27
         with:
           aws-region: "${{ inputs.aws-region }}"
           secret-path: "/${{steps.select-environment.outputs.environment}}/github/argocd/argocd-username"
 
       - name: Fetch ArgoCD Password
         id: ssm-secret-fetch-argocd-password
-        uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.26
+        uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.27
         with:
           aws-region: "${{ inputs.aws-region }}"
           secret-path: "/${{steps.select-environment.outputs.environment}}/github/argocd/argocd-password"
 
       - name: Fetch Teleport Key
         id: ssm-secret-fetch-teleport-key
-        uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.26
+        uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.27
         with:
           aws-region: "${{ inputs.aws-region }}"
           secret-path: "/common/github/teleport/teleport-key"
 
       - name: CLONE K8S HELM CHART
         id: clone-k8s-helm-chart-dk
-        uses: INFRALESS-IO/github-actions/.github/actions/clone-private-repo@0.0.26
+        uses: INFRALESS-IO/github-actions/.github/actions/clone-private-repo@0.0.27
         if: steps.ssm-secret-fetch-github-deploy-key.outcome == 'success'
         with:
           github-deploy-key: "${{steps.ssm-secret-fetch-github-deploy-key.outputs.ssm-secret}}"
@@ -115,7 +115,7 @@ jobs:
 
       - name: CLONE K8S HELM CHART
         id: clone-k8s-helm-chart
-        uses: INFRALESS-IO/github-actions/.github/actions/clone-private-repo@0.0.26
+        uses: INFRALESS-IO/github-actions/.github/actions/clone-private-repo@0.0.27
         if: steps.ssm-secret-fetch-github-deploy-key.outcome != 'success'
         with:
           repository: "${{ inputs.clone-k8s-helm-chart-repository }}"
@@ -140,7 +140,7 @@ jobs:
 
       - name: UPDATE ARGOCD APPS DEFINITION WITH THE NEW RELEASE TAG
         id: update-argocd-apps-release-tag
-        uses: INFRALESS-IO/github-actions/.github/actions/sed-files@0.0.26
+        uses: INFRALESS-IO/github-actions/.github/actions/sed-files@0.0.27
         with:
           file-path: "./devops/argocd/${{steps.select-environment.outputs.environment}}/*.yaml"
           find-pattern: "${{ inputs.find-pattern }}"
@@ -148,7 +148,7 @@ jobs:
 
       - name: COMMIT CHANGE AND PRODUCE RELEASE TAG
         id: commit-and-tag
-        uses: INFRALESS-IO/github-actions/.github/actions/commit-and-tag@0.0.26
+        uses: INFRALESS-IO/github-actions/.github/actions/commit-and-tag@0.0.27
         with:
           release-tag: "${{ steps.select-environment.outputs.release-tag }}"
           commit-path: "${{ inputs.commit-path }}"
@@ -187,7 +187,7 @@ jobs:
 
       - name: Update ARGOCD Release
         id: update-argocd-release
-        uses: INFRALESS-IO/github-actions/.github/actions/update-argocd-release@0.0.26
+        uses: INFRALESS-IO/github-actions/.github/actions/update-argocd-release@0.0.27
         with:
           environment: ${{steps.select-environment.outputs.environment}}
           release-tag: ${{steps.select-environment.outputs.release-tag}}
