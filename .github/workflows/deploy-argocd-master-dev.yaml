@@ -179,13 +179,17 @@ jobs:
 
       - name: Build and Push to ECR
         env:
-          APP_IMAGE_STAGES: ${{ inputs.app-image-name }}
-          APP_IMAGE_NAME: ${{ inputs.ecr-url }}/${{ inputs.app-image-name }}
+          APP_IMAGE_NAME: ${{ inputs.app-image-name }}
+          APP_IMAGE_ECR_URL: ${{ inputs.ecr-url }}
         run: |
-          echo ${APP_IMAGE_STAGES}
-          export APP_IMAGE=${{ inputs.app-name }}:${{steps.select-environment.outputs.release-tag}}
-          docker build --target    -t $APP_IMAGE -f Dockerfile .
-          docker push $APP_IMAGE
+          IFS=', ' read -r -a array <<< "$APP_IMAGE_NAME"
+          for element in "${array[@]}"
+          do
+            echo "$element"
+            export APP_IMAGE=${APP_IMAGE_ECR_URL}/${element}:${{steps.select-environment.outputs.release-tag}}
+            docker build --target $element -t $APP_IMAGE -f Dockerfile .
+            docker push $APP_IMAGE
+          done
 
       - name: Update ARGOCD Release
         id: update-argocd-release
