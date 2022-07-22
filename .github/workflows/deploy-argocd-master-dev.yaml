@@ -179,10 +179,12 @@ jobs:
 
       - name: Build and Push to ECR
         env:
+          APP_IMAGE_STAGES: ${{ inputs.app-image-name }}
           APP_IMAGE_NAME: ${{ inputs.ecr-url }}/${{ inputs.app-image-name }}
         run: |
+          echo ${APP_IMAGE_STAGES}
           export APP_IMAGE=${{ inputs.app-name }}:${{steps.select-environment.outputs.release-tag}}
-          docker build -t $APP_IMAGE -f Dockerfile .
+          docker build --target    -t $APP_IMAGE -f Dockerfile .
           docker push $APP_IMAGE
 
       - name: Update ARGOCD Release
