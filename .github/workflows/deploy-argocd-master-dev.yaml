@@ -3,6 +3,9 @@ name: Deploy ArgoCD
 on:
   workflow_call:
     inputs:
+      environment-number:
+        required: true
+        type: string
       app-name:
         required: true
         type: string
@@ -204,7 +207,7 @@ jobs:
           argocd-extra-params: "${{ inputs.argocd-extra-params }}"
           teleport-key: ${{steps.ssm-secret-fetch-teleport-key.outputs.ssm-secret}}
           teleport-url: "${{ inputs.teleport-url }}"
-          teleport-bastion: bastion-${{steps.select-environment.outputs.environment}}
+          teleport-bastion: bastion-${{steps.select-environment.outputs.environment}}-${{inputs.environment-number}}
 
       - name: Create Release
         id: create_release
