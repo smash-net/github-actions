@@ -12,6 +12,9 @@ on:
       app-image-name:
         required: true
         type: string
+      app-image-tag-prefix:
+        required: true
+        type: string
       teleport-url:
         required: true
         type: string
@@ -182,14 +185,15 @@ jobs:
 
       - name: Build and Push to ECR
         env:
+          APP_IMAGE_TAG_PREFIX:  ${{ inputs.app-image-tag-prefix }}
           APP_IMAGE_NAME: ${{ inputs.app-image-name }}
           APP_IMAGE_ECR_URL: ${{ inputs.ecr-url }}
         run: |
-          IFS=', ' read -r -a array <<< "$APP_IMAGE_NAME"
+          IFS=', ' read -r -a array <<< "$APP_IMAGE_TAG_PREFIX"
           for element in "${array[@]}"
           do
             echo "$element"
-            export APP_IMAGE=${APP_IMAGE_ECR_URL}/${element}:${{steps.select-environment.outputs.release-tag}}
+            export APP_IMAGE=${APP_IMAGE_ECR_URL}/${APP_IMAGE_NAME}:${element}-${{steps.select-environment.outputs.release-tag}}
             docker build --target $element -t $APP_IMAGE -f Dockerfile .
             docker push $APP_IMAGE
           done
