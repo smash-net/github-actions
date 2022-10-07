@@ -76,4 +76,10 @@ runs:
         argocd app wait $APP_NAME --timeout $ARGOCD_TIMEOUT_SECONDS
 
         # WAIT FOR EVERY SINGLE APP TO REACH HEALHTY STATUS.
-        argocd app wait `argocd app list | awk '!/NAME|app-of-apps/{print $1}' | tr '\n' ' '` --timeout $ARGOCD_TIMEOUT_SECONDS | grep 'Name:\|Health Status:'
+        #argocd app wait `argocd app list | awk '!/NAME|app-of-apps/{print $1}' | tr '\n' ' '` --timeout $ARGOCD_TIMEOUT_SECONDS | grep 'Name:\|Health Status:'
+
+        # Wait for apps by label, in this example we waiting for apps that are children of another app (aka app-of-apps)
+        argocd app wait -l argocd.argoproj.io/instance=$APP_NAME --timeout $ARGOCD_TIMEOUT_SECONDS
+
+        # Re-checks the apps and provides a summary of all statuses
+        argocd app wait -l argocd.argoproj.io/instance=$APP_NAME --timeout $ARGOCD_TIMEOUT_SECONDS | grep 'Name:\|Health Status:'
