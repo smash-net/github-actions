@@ -25,8 +25,8 @@ runs:
       id: select-environment
       run: |
 
-        if [[ ${{ inputs.test-env }} ]]; then
-          TEST_ENV=${{ inputs.test-env }}
+        if [[ -z "${{ inputs.test-env }}" ]]; then
+          TEST_ENV="${{ inputs.test-env }}"
         else
           TEST_ENV="dev"
 
