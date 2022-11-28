@@ -29,7 +29,7 @@ runs:
           TEST_ENV="${{ inputs.test-env }}"
         else
           TEST_ENV="dev"
-
+        fi
         # PREPARE TAG CHECKING TO DETERMINE WHETHER IS PROD, STAGING or DEV
         if [[ ${GITHUB_REF_NAME} =~ master ]]; then
               echo "PROD TAGS"
