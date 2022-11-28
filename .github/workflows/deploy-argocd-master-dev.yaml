@@ -42,6 +42,9 @@ on:
       test-branch:
         required: false
         type: string
+      test-env:
+        required: false
+        type: string
       role-to-assume:
         required: true
         type: string
@@ -56,10 +59,10 @@ jobs:
 
       - name: Select Environment
         id: select-environment
-        uses: INFRALESS-IO/github-actions/.github/actions/select-environment-master-dev@0.0.28
+        uses: INFRALESS-IO/github-actions/.github/actions/select-environment-master-dev@0.0.34
         with:
           test-branch: "${{ inputs.test-branch }}"
-
+          test-env: "${{ inputs.test-env }}"
       - name: Assume InfraDeployGitHub
         uses: aws-actions/configure-aws-credentials@master
         with:
