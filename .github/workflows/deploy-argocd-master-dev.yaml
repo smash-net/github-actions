@@ -59,7 +59,7 @@ jobs:
 
       - name: Select Environment
         id: select-environment
-        uses: INFRALESS-IO/github-actions/.github/actions/select-environment-master-dev@0.0.38
+        uses: INFRALESS-IO/github-actions/.github/actions/select-environment-master-dev@0.0.39
         with:
           test-branch: "${{ inputs.test-branch }}"
           test-env: "${{ inputs.test-env }}"
