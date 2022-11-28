@@ -42,7 +42,7 @@ runs:
             ENVIRONMENT="dev"
         elif [[ ${GITHUB_REF_NAME} =~ ${{ inputs.test-branch }} ]]; then
             echo "${TEST_ENV} TAGS"
-            ENVIRONMENT=${TEST_ENV}
+            ENVIRONMENT="${TEST_ENV}"
         else
             echo ${GITHUB_REF_NAME}
             echo "This is not a valid branch for deployments, exiting ..."
