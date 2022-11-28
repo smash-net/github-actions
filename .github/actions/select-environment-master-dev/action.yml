@@ -5,6 +5,9 @@ inputs:
   test-branch:
     description: "Test Branch if different than standard branches"
     required: false
+  test-env:
+    description: "Test Env"
+    required: false
 
 outputs:
   environment:
@@ -22,6 +25,11 @@ runs:
       id: select-environment
       run: |
 
+        if [[ ${{ inputs.test-env }} ]]; then
+          TEST_ENV=${{ inputs.test-env }}
+        else
+          TEST_ENV="dev"
+
         # PREPARE TAG CHECKING TO DETERMINE WHETHER IS PROD, STAGING or DEV
         if [[ ${GITHUB_REF_NAME} =~ master ]]; then
               echo "PROD TAGS"
@@ -33,8 +41,8 @@ runs:
             echo "DEV TAGS"
             ENVIRONMENT="dev"
         elif [[ ${GITHUB_REF_NAME} =~ ${{ inputs.test-branch }} ]]; then
-            echo "DEV TAGS"
-            ENVIRONMENT="dev"
+            echo "${TEST_ENV} TAGS"
+            ENVIRONMENT=${TEST_ENV}
         else
             echo ${GITHUB_REF_NAME}
             echo "This is not a valid branch for deployments, exiting ..."
