@@ -167,7 +167,7 @@ jobs:
          with:
            task-definition: task-definition.json
            service: {{inputs.ecs-service-name}}
-           cluster: {{inouts.ecs-cluster-name}}
+           cluster: {{inputs.ecs-cluster-name}}
            wait-for-service-stability: true
 
       - name: Create Release
