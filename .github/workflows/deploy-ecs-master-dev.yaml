@@ -145,7 +145,7 @@ jobs:
 
       - name: Update task definition
         run: |
-          jq '(.containerDefinitions[] | select(.name == "${{inputs.container-name"})) .image = "${APP_IMAGE}"'
+          jq '(.containerDefinitions[] | select(.name == "${{inputs.container-name}}")) .image = "${APP_IMAGE}"'
 
 
       - name: Deploy to Amazon ECS
