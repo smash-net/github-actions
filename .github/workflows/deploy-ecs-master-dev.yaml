@@ -15,9 +15,6 @@ on:
       app-image-tag-prefix:
         required: true
         type: string
-      teleport-url:
-        required: true
-        type: string
       commit-path:
         required: true
         type: string
@@ -78,9 +75,6 @@ jobs:
         uses: INFRALESS-IO/github-actions/.github/actions/install-aws-cli@0.0.28
 
 
-      - name: Install TELEPORT CLI
-        id: install-teleport-cli
-        uses: INFRALESS-IO/github-actions/.github/actions/install-teleport-cli@0.0.28
 
       - name: Fetch GitHub Deploy Key
         id: ssm-secret-fetch-github-deploy-key
@@ -89,14 +83,6 @@ jobs:
         with:
           aws-region: "${{ inputs.aws-region }}"
           secret-path: "/common/github/c-k8s-helm-chart/deploy-key"
-
-
-      - name: Fetch Teleport Key
-        id: ssm-secret-fetch-teleport-key
-        uses: INFRALESS-IO/github-actions/.github/actions/ssm-secret-fetch@0.0.28
-        with:
-          aws-region: "${{ inputs.aws-region }}"
-          secret-path: "/common/github/teleport/teleport-key"
 
 
       - name: Write Release
