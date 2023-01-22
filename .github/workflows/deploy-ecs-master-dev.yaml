@@ -140,20 +140,20 @@ jobs:
       - name: Get task definition
         run: |
           aws ecs describe-task-definition \
-          --task-definition  {{inputs.task-defenition-family}} \
+          --task-definition  ${{inputs.task-defenition-family}} \
           --query taskDefinition > task-definition.json
 
       - name: Update task definition
         run: |
-          jq '(.containerDefinitions[] | select(.name == "{{inputs.container-name"})) .image = "${APP_IMAGE}"'
+          jq '(.containerDefinitions[] | select(.name == "${{inputs.container-name"})) .image = "${APP_IMAGE}"'
 
 
       - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: task-definition.json
-          service: {{inputs.ecs-service-name}}
-          cluster: {{inputs.ecs-cluster-name}}
+          service: "${{inputs.ecs-service-name}}"
+          cluster: "${{inputs.ecs-cluster-name}}"
           wait-for-service-stability: true
 
       - name: Create Release
