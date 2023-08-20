@@ -58,3 +58,5 @@ runs:
         # OUTPUTS
         echo "::set-output name=environment::$ENVIRONMENT"
         echo "::set-output name=release-tag::$RELEASE_TAG"
+        echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+        echo "release-tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
