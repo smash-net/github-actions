@@ -50,7 +50,5 @@ runs:
         fi
 
         RELEASE_TAG="${GITHUB_REF_NAME#*/}-${GITHUB_RUN_ID}-${GITHUB_RUN_NUMBER}"
-        # echo "::set-output name=release-tag::$RELEASE_TAG"
-        # echo "::set-output name=environment::$ENVIRONMENT"
         echo "release-tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
         echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
