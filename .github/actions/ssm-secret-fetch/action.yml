@@ -28,11 +28,8 @@ runs:
         # FETCH SSM SECRET
         SSM_SECRET=$(aws ssm get-parameter --name $SECRET_PATH --query "Parameter.Value" --output text --with-decryption --region $AWS_REGION)
 
-        # RESOLVE MULTILINE ISSUE DESCRIBED HERE https://github.community/t/set-output-truncates-multiline-strings/16852/5
-        SSM_SECRET="${SSM_SECRET//'%'/'%25'}"
-        SSM_SECRET="${SSM_SECRET//$'\n'/'%0A'}"
-        SSM_SECRET="${SSM_SECRET//$'\r'/'%0D'}"
-
-        # MASKS AND EXPORT CREDENTIALS
-        echo "ssm-secret=$SSM_SECRET" >> $GITHUB_OUTPUT
-        #echo "::set-output name=ssm-secret::$SECRET_PATH"
+        # RESOLVE MULTILINE ISSUE DESCRIBED HERE https://github.com/orgs/community/discussions/26288#discussioncomment-3876281
+        delimiter="$(openssl rand -hex 8)"
+        echo "ssm-secret<<${delimiter}" >> "${GITHUB_OUTPUT}"
+        echo "$SSM_SECRET" >> "${GITHUB_OUTPUT}"
+        echo "${delimiter}" >> "${GITHUB_OUTPUT}"
