@@ -11,4 +11,4 @@ runs:
 
         # INSTALL AWS CLI
         sudo apt update && sudo apt install python3-pip -y
-        sudo pip install awscli --upgrade
+        sudo apt install python3-awscli
