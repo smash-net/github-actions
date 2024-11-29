@@ -52,7 +52,7 @@ jobs:
 
       - name: Fetch ECS Details
         id: fetch-cloudformation-ecs-stack-details
-        uses: Distro-LLC/github-actions/.github/actions/fetch-cloudformation-ecs-stack-details@main
+        uses: smash-net/github-actions/.github/actions/fetch-cloudformation-ecs-stack-details@main
         with:
           aws-region: "${{ inputs.aws-region }}"
           ecs-stack-name: "${{ inputs.ecs-stack-name }}"
