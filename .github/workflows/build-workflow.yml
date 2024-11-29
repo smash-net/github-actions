@@ -1,0 +1,165 @@
+name: build-workflow
+on:
+  workflow_call:
+    inputs:
+      aws-account-id:
+        required: true
+        type: string
+      aws-region:
+        required: true
+        type: string
+      app-image-name:
+        required: true
+        type: string
+      branch:
+        required: true
+        type: string
+      test-branch:
+        required: false
+        type: string
+      test-env:
+        required: false
+        type: string
+      docker-context:
+        required: true
+        type: string
+      docker-target:
+        required: false
+        type: string
+        default: ''
+      github-workflow-dispath-environment:
+        required: false
+        type: string
+      build-args:
+        required: false
+        type: string
+      runs-on:
+        type: string
+        required: false
+        default: ubuntu-latest
+      docker-cmd:
+        required: false 
+        type: string
+        default: 'start_supervisor'
+      docker-file-path:
+        required: true
+        type: string
+      s3-file-path:
+        required: false 
+        type: string
+        default: ''
+      git-lfs:
+        type: string
+        required: false
+        default: 'false'
+      s3-file-destination-path:
+        type: string
+        required: false
+        default: ''
+      ssm-aws-account-id:
+        required: false
+        type: string
+      ssm-prefix:
+        required: false
+        type: string
+      ssm-params-list:
+        required: false
+        type: string
+
+    outputs:
+      environment:
+        value: ${{ jobs.build-pipeline.outputs.environment }}
+      aws-region:
+        value: ${{ inputs.aws-region }}
+      aws-account-id:
+        value: ${{ jobs.build-pipeline.outputs.aws-account-id }}
+      trigger-deploy-workflow:
+        value: ${{ jobs.build-pipeline.outputs.trigger-deploy-workflow }}
+
+jobs:
+  build-pipeline:
+    name: build
+    runs-on: ${{ inputs.runs-on }}
+    outputs:
+      environment: ${{ steps.select-environment.outputs.environment }}
+      aws-account-id: ${{ steps.select-environment.outputs.aws-account-id }}
+      trigger-deploy-workflow: ${{ steps.select-environment.outputs.trigger-deploy-workflow }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          lfs: ${{ inputs.git-lfs }}
+
+      - name: Assume InfraDeployGitHub (Staging/Prod Account)
+        if: inputs.ssm-aws-account-id != ''
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-region: "${{inputs.aws-region}}"
+          role-to-assume: "arn:aws:iam::${{inputs.ssm-aws-account-id}}:role/githubAccess"
+          role-duration-seconds: 1800
+
+      - name: Install AWS CLI
+        id: install-aws-cli
+        uses: smash-net/github-actions/.github/actions/install-aws-cli@feature/infraless-ecs-setup
+
+      - name: Fetch SSM Parameters
+        if: inputs.ssm-aws-account-id != ''
+        id: ssm-parameters
+        run: |
+          ls
+          # GET DATA FROM SSM TO PREPARE .env
+          printf $(aws ssm get-parameter --name /${{inputs.github-workflow-dispath-environment}}/github/react/env --with-decryption | jq  '.Parameter.Value') | tail -c +2 | head -c -1 > .env
+          ls
+
+      - name: Assume InfraDeployGitHub (Common Account)
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-region: "${{ inputs.aws-region }}"
+          role-to-assume: "arn:aws:iam::${{ inputs.aws-account-id }}:role/githubAccess"
+          role-duration-seconds: 1800
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          version: latest
+          install: true
+          driver-opts: |
+            image=moby/buildkit:latest
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ${{ inputs.aws-account-id }}.dkr.ecr.${{ inputs.aws-region }}.amazonaws.com/${{ inputs.app-image-name }}
+          flavor: |
+            latest=false
+          tags: |
+            type=raw,enable=true,priority=200,prefix=,suffix=,value=${{ inputs.branch }}-${{ github.sha }}-${{ github.run_id }}
+
+      - name: Download Artifacts from S3 Bucket
+        if: ${{ inputs.s3-file-path != '' }}
+        run: |
+            aws s3 cp ${{inputs.s3-file-path}} ${{inputs.s3-file-destination-path}}
+
+      - name: Build, tag, and push images
+        uses: docker/build-push-action@v3
+        with:
+          context: ${{ inputs.docker-context }}
+          file: ${{ inputs.docker-file-path }}
+          build-args: |
+            ${{ inputs.build-args }}
+          pull: false
+          push: true
+          target: ${{ inputs.docker-target }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          no-cache: true
+
+

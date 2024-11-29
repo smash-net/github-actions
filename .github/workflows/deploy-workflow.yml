@@ -1,0 +1,86 @@
+#
+#  This workflow is used to deploy 1 container
+#
+name: deploy-workflow
+run-name: Deploy
+on:
+  workflow_call:
+    inputs:
+      ecs-aws-account-id:
+        required: true
+        type: string
+      ecr-aws-account-id:
+        required: true
+        type: string
+      ecr-aws-region:
+        required: true
+        type: string
+      aws-region:
+        required: true
+        type: string
+      app-image-name:
+        required: true
+        type: string
+      ecs-stack-name:
+        required: true
+        type: string
+      release-tag:
+        required: true
+        type: string
+      container:
+        required: true
+        type: string
+      runs-on:
+        type: string
+        required: false
+        default: ubuntu-latest
+
+jobs:
+  deploy-pipeline:
+    name: deploy
+    runs-on: ${{ inputs.runs-on }}
+    env:
+      ACTIONS_STEP_DEBUG: "true"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Assume InfraDeployGitHub
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-region: "${{ inputs.aws-region }}"
+          role-to-assume: "arn:aws:iam::${{ inputs.ecs-aws-account-id }}:role/githubAccess"
+          role-duration-seconds: 1800
+
+      - name: Fetch ECS Details
+        id: fetch-cloudformation-ecs-stack-details
+        uses: Distro-LLC/github-actions/.github/actions/fetch-cloudformation-ecs-stack-details@main
+        with:
+          aws-region: "${{ inputs.aws-region }}"
+          ecs-stack-name: "${{ inputs.ecs-stack-name }}"
+
+      - name: Get task definition
+        run: |
+          aws ecs describe-task-definition \
+          --task-definition ${{steps.fetch-cloudformation-ecs-stack-details.outputs.ecs-task-definition-name}} \
+          --query taskDefinition > task-definition.json
+          cat task-definition.json
+
+      - name: Fill in the new image ID in the Amazon ECS task definition for the container
+        id: task-def-container
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ inputs.container }}
+          image: "${{ inputs.ecr-aws-account-id }}.dkr.ecr.${{ inputs.ecr-aws-region }}.amazonaws.com/${{ inputs.app-image-name }}:${{ inputs.release-tag }}"
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def-container.outputs.task-definition }}
+          service: "${{ steps.fetch-cloudformation-ecs-stack-details.outputs.ecs-service-name }}"
+          cluster: "${{ steps.fetch-cloudformation-ecs-stack-details.outputs.ecs-cluster-name }}"
+          wait-for-service-stability: true
+          wait-for-minutes: 10
+      
+      - name: Update SSM latest image tag parameters
+        run: |
+           aws ssm put-parameter --name "/latest-tags/${{ inputs.ecs-stack-name }}/${{ inputs.app-image-name }}" --type "String" --value "${{ inputs.release-tag }}" --overwrite

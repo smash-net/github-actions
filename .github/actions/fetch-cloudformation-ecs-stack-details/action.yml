@@ -1,0 +1,48 @@
+name: "Fetch Cloudformation ECS Stack Details"
+description: "Fetch Cloudformation ECS Stack Details"
+
+inputs:
+  ecs-stack-name:
+    description: "ECS Cloudformation Stack Name"
+    required: true
+  aws-region:
+    description: "AWS Region"
+    required: true
+
+outputs:
+  ecs-cluster-name:
+    description: "ECS Cluster Name"
+    value: ${{steps.fetch-ecs-stack-details.outputs.ecs-cluster-name}}
+  ecs-service-name:
+    description: "ECS Service Name"
+    value: ${{steps.fetch-ecs-stack-details.outputs.ecs-service-name}}
+  ecs-task-definition-name:
+    description: "ECS Task Definition Name"
+    value: ${{steps.fetch-ecs-stack-details.outputs.ecs-task-definition-name}}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Fetch ECS Stack Details
+      shell: bash
+      id: fetch-ecs-stack-details
+      env:
+        ECS_STACK_NAME: ${{ inputs.ecs-stack-name }}
+        AWS_REGION: ${{ inputs.aws-region }}
+      run: |
+        set -u
+        STACK_OUTPUTS="$(aws cloudformation describe-stacks --region ${AWS_REGION} --no-paginate --output json | \
+        jq --arg ecs_stack_name "${ECS_STACK_NAME}" -r '.Stacks[] | select(.StackName | startswith($ecs_stack_name)) | .Outputs' \
+        )"
+        ECS_CLUSTER_NAME="$(jq -r '.[] | select(.OutputKey == "ECSClusterName") | .OutputValue' <<<"${STACK_OUTPUTS}")"
+        ECS_SERVICE_NAME="$(jq -r '.[] | select(.OutputKey == "ECSServiceName") | .OutputValue' <<<"${STACK_OUTPUTS}")"
+        ECS_TASK_DEFINITION_NAME="$(jq -r '.[] | select(.OutputKey == "ECSTaskDefinitionArn") | .OutputValue' <<<"${STACK_OUTPUTS}" | \
+        awk -F"[/]" '{print $2}' | awk -F"[:]" '{print $1}' )"
+
+        echo "ECS_CLUSTER_NAME = $ECS_CLUSTER_NAME"
+        echo "ECS_SERVICE_NAME = $ECS_SERVICE_NAME"
+        echo "ECS_TASK_DEFINITION_NAME = $ECS_TASK_DEFINITION_NAME"
+
+        echo "ecs-cluster-name=$ECS_CLUSTER_NAME" >> $GITHUB_OUTPUT
+        echo "ecs-service-name=$ECS_SERVICE_NAME" >> $GITHUB_OUTPUT
+        echo "ecs-task-definition-name=$ECS_TASK_DEFINITION_NAME" >> $GITHUB_OUTPUT
