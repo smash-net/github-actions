@@ -66,14 +66,14 @@ jobs:
 
       - name: Fill in the new image ID in the Amazon ECS task definition for the container
         id: task-def-container
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        uses: aws-actions/amazon-ecs-render-task-definition@v1.5.0
         with:
           task-definition: task-definition.json
           container-name: ${{ inputs.container }}
           image: "${{ inputs.ecr-aws-account-id }}.dkr.ecr.${{ inputs.ecr-aws-region }}.amazonaws.com/${{ inputs.app-image-name }}:${{ inputs.release-tag }}"
 
       - name: Deploy to Amazon ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.task-def-container.outputs.task-definition }}
           service: "${{ steps.fetch-cloudformation-ecs-stack-details.outputs.ecs-service-name }}"
