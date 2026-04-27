@@ -42,9 +42,9 @@ jobs:
     env:
       ACTIONS_STEP_DEBUG: "true"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Assume InfraDeployGitHub
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: "${{ inputs.aws-region }}"
           role-to-assume: "arn:aws:iam::${{ inputs.ecs-aws-account-id }}:role/githubAccess"
