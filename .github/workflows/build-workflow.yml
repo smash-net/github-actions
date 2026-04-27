@@ -155,7 +155,7 @@ jobs:
           target: ${{ inputs.docker-target }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ inputs.app-image-name }}
-          cache-to: type=gha,mode=max,scope=${{ inputs.app-image-name }}
+          cache-from: type=gha,scope=${{ inputs.app-image-name }}-${{ inputs.branch }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.app-image-name }}-${{ inputs.branch }}
 
 
