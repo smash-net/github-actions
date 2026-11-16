@@ -34,6 +34,14 @@ on:
         type: string
         required: false
         default: ubuntu-latest
+      wait-for-minutes:
+        description: >-
+          How long to wait for the service to become stable. Raise it for services whose old tasks
+          can hold off a deploy, such as workers with scale-in protection. At most 50, so the wait
+          fits in the githubAccess role's 1-hour session.
+        type: number
+        required: false
+        default: 10
 
 jobs:
   deploy-pipeline:
@@ -43,12 +51,30 @@ jobs:
       ACTIONS_STEP_DEBUG: "true"
     steps:
       - uses: actions/checkout@v4
+      - name: Size the AWS session to the stability wait
+        id: aws-session
+        env:
+          WAIT_FOR_MINUTES: "${{ inputs.wait-for-minutes }}"
+        run: |
+          # githubAccess allows at most 1 hour; STS requires at least 15 minutes. The steps around
+          # the wait (lookups, task definition, SSM update) get 10 minutes of headroom.
+          MIN_SESSION_SECONDS=900
+          MAX_SESSION_SECONDS=3600
+          SESSION_HEADROOM_SECONDS=600
+
+          needed_seconds=$(( WAIT_FOR_MINUTES * 60 + SESSION_HEADROOM_SECONDS ))
+          if (( WAIT_FOR_MINUTES < 1 || needed_seconds > MAX_SESSION_SECONDS )); then
+            echo "::error::wait-for-minutes must be 1-$(( (MAX_SESSION_SECONDS - SESSION_HEADROOM_SECONDS) / 60 )) to fit the role's 1-hour session, got ${WAIT_FOR_MINUTES}"
+            exit 1
+          fi
+          echo "role-duration-seconds=$(( needed_seconds < MIN_SESSION_SECONDS ? MIN_SESSION_SECONDS : needed_seconds ))" >> "$GITHUB_OUTPUT"
+
       - name: Assume InfraDeployGitHub
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: "${{ inputs.aws-region }}"
           role-to-assume: "arn:aws:iam::${{ inputs.ecs-aws-account-id }}:role/githubAccess"
-          role-duration-seconds: 1800
+          role-duration-seconds: "${{ steps.aws-session.outputs.role-duration-seconds }}"
 
       - name: Fetch ECS Details
         id: fetch-cloudformation-ecs-stack-details
@@ -79,7 +105,7 @@ jobs:
           service: "${{ steps.fetch-cloudformation-ecs-stack-details.outputs.ecs-service-name }}"
           cluster: "${{ steps.fetch-cloudformation-ecs-stack-details.outputs.ecs-cluster-name }}"
           wait-for-service-stability: true
-          wait-for-minutes: 10
+          wait-for-minutes: "${{ inputs.wait-for-minutes }}"
           # The SDK waiter backs off up to 600s between polls and gives up as soon as the next
           # delay would pass the deadline, so without a cap it stops after ~4 minutes, not 10.
           wait-max-delay-seconds: 30
