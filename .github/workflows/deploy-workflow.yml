@@ -80,6 +80,9 @@ jobs:
           cluster: "${{ steps.fetch-cloudformation-ecs-stack-details.outputs.ecs-cluster-name }}"
           wait-for-service-stability: true
           wait-for-minutes: 10
+          # The SDK waiter backs off up to 600s between polls and gives up as soon as the next
+          # delay would pass the deadline, so without a cap it stops after ~4 minutes, not 10.
+          wait-max-delay-seconds: 30
       
       - name: Update SSM latest image tag parameters
         run: |
